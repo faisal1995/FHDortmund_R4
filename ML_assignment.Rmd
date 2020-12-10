@@ -1,0 +1,124 @@
+---
+title: "Machine learning assignment"
+author: "Oleksii Yehorchenkov"
+date: "30 11 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+This assignment is based on materials from Coursera course [Practical machine learning](https://www.coursera.org/learn/practical-machine-learning/home/welcome)
+
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+## Data
+
+The training data for this project are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment. 
+
+## What you should do
+
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+Also you should explain how do you deal with NA's values and investigate correlation.
+
+You repository for this assignment should consist of R markdown file, compiled html file and prediction.csv file with data from pml-testing.csv and 'classe' column with predictions for 20 observation.
+
+
+
+#Read Data
+```{r}
+
+#Reading data from URL
+Train_Data <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv")
+Test_Data <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv")
+
+# Remove NA columns, Data Cleanup
+sum(complete.cases(Train_Data))
+Train_Data <- Train_Data[, colSums(is.na(Train_Data)) == 0] 
+Test_Data <- Test_Data[, colSums(is.na(Test_Data)) == 0] 
+
+```
+
+
+#trainData
+```{r}
+library(caret)
+
+
+
+#Split the training set to 80% Training Data and 20% validation data
+set.seed(1905)
+trainset <- createDataPartition(Train_Data$classe, p = 0.8, list = FALSE)
+Training <- Train_Data[trainset, ]
+Validation <- Train_Data[-trainset, ]
+
+# exclude near zero variance features
+nzvcol <- nearZeroVar(Training)
+Training <- Training[, -nzvcol]
+
+# exclude columns with m40% ore more missing values exclude descriptive
+# columns like name etc
+cntlength <- sapply(Training, function(x) {
+    sum(!(is.na(x) | x == ""))
+})
+nullcol <- names(cntlength[cntlength < 0.6 * length(Training$classe)])
+descriptcol <- c("X", "user_name", "raw_timestamp_part_1", "raw_timestamp_part_2", 
+    "cvtd_timestamp", "new_window", "num_window")
+excludecols <- c(descriptcol, nullcol)
+Training <- Training[, !names(Training) %in% excludecols]
+
+
+
+
+```
+
+
+#random forest
+```{r}
+library(randomForest)
+
+#categorizing the data
+Training$classe = factor(Training$classe)
+
+#applying random forest algorithm to the traning data
+rfModel <- randomForest(classe ~ ., data = Training, importance = TRUE, ntrees = 10)
+
+#applying predict algorithm to Random forest model with training data
+ptraining <- predict(rfModel, Training)
+print(confusionMatrix(ptraining, Training$classe))
+
+
+```
+
+#Test
+```{r}
+#applying predict algorithm to Random forest model with Test data
+
+ptest <- predict(rfModel, Test_Data)
+ptest
+
+```
+
+#Save File
+```{r}
+
+# save the prediction data on csv file and export it local PC
+write.csv(ptest,"C:/Users/Faisal/Desktop/Lecture#1/RAssignment/FHDortmund_R4/prediction.csv", row.names = TRUE)
+
+
+
+```
+
+
